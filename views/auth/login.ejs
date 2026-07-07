@@ -1,0 +1,29 @@
+<%- include('../layout', { title: 'Sign in — Forma', body: `
+<div class="auth-page">
+  <div class="auth-card">
+    <a href="/" class="auth-logo">
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+        <path d="M6 8 L34 8 L34 24 L22 24 L22 32 L6 32 Z" stroke="#33E566" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+        <circle cx="30" cy="10.5" r="2" fill="#33E566"/>
+      </svg>
+      Forma
+    </a>
+    <h1 class="auth-title">Welcome back</h1>
+    <p class="auth-sub">Sign in to your account</p>
+
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+    <form method="POST" action="/login" class="auth-form">
+      <label>Email
+        <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+      </label>
+      <label>Password
+        <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••" />
+      </label>
+      <button type="submit" class="btn-primary btn-full">Sign in</button>
+    </form>
+
+    <p class="auth-switch">No account? <a href="/register">Create one free</a></p>
+  </div>
+</div>
+` }) %>

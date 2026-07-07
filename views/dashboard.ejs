@@ -1,0 +1,83 @@
+<%- include('layout', { title: 'Dashboard — Forma', body: `
+<div class="dash-page">
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title">Hi, ${user.name.split(' ')[0]} 👋</h1>
+      <p class="dash-sub">${user.role === 'designer' ? 'Your designer dashboard' : 'Your projects'}</p>
+    </div>
+    ${user.role === 'homeowner' ? `<a href="/projects/new" class="btn-primary">+ New project</a>` : ''}
+    ${user.role === 'designer' ? `<a href="/designers/me/edit" class="btn-ghost">Edit profile</a>` : ''}
+  </div>
+
+  ${hired ? `<div class="alert alert-success">Hire request sent! The designer will be in touch soon.</div>` : ''}
+
+  ${user.role === 'homeowner' ? `
+  <section class="dash-section">
+    <h2>Projects</h2>
+    ${projects && projects.length > 0 ? `
+    <div class="project-grid">
+      ${projects.map(p => `
+        <a href="/projects/${p.id}" class="project-card">
+          <div class="project-card-thumb">
+            ${p.thumbnail_url
+              ? `<img src="${p.thumbnail_url}" alt="${p.name}" />`
+              : `<div class="project-card-thumb-empty">
+                   <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+                     <path d="M6 8 L34 8 L34 24 L22 24 L22 32 L6 32 Z" stroke="#33E56640" stroke-width="2" stroke-linejoin="round" fill="none"/>
+                   </svg>
+                 </div>`
+            }
+          </div>
+          <div class="project-card-body">
+            <div class="project-card-tag">${p.space_type || 'interior'}</div>
+            <h3>${p.name}</h3>
+            ${p.address ? `<p class="project-card-addr">${p.address}</p>` : ''}
+            ${p.area_m2 ? `<p class="project-card-area">${Math.round(p.area_m2)} m²</p>` : ''}
+          </div>
+        </a>
+      `).join('')}
+    </div>
+    ` : `
+    <div class="empty-state">
+      <p>No projects yet. Scan your first space in the <a href="#">iOS app</a>, or create a project here.</p>
+      <a href="/projects/new" class="btn-primary">Create project</a>
+    </div>
+    `}
+  </section>
+
+  <section class="dash-section">
+    <h2>Find a designer</h2>
+    <p class="dash-section-sub">Browse professionals who can bring your design to life.</p>
+    <a href="/designers" class="btn-ghost">Browse marketplace →</a>
+  </section>
+  ` : ''}
+
+  ${user.role === 'designer' ? `
+  <section class="dash-section">
+    <h2>Incoming requests</h2>
+    ${requests && requests.length > 0 ? `
+    <div class="request-list">
+      ${requests.map(r => `
+        <div class="request-card">
+          <div class="request-meta">
+            <strong>${r.homeowner_name}</strong>
+            ${r.project_name ? `· <em>${r.project_name}</em>` : ''}
+            <span class="status-badge status-${r.status}">${r.status}</span>
+          </div>
+          ${r.message ? `<p class="request-msg">${r.message}</p>` : ''}
+          ${r.budget ? `<p class="request-budget">Budget: $${Number(r.budget).toLocaleString()}</p>` : ''}
+          ${r.status === 'pending' ? `
+            <form method="POST" action="/designers/me/requests/${r.id}/respond" class="request-actions">
+              <button name="action" value="accept" class="btn-primary btn-sm">Accept</button>
+              <button name="action" value="decline" class="btn-ghost btn-sm">Decline</button>
+            </form>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+    ` : '<p class="empty-text">No requests yet — make sure your profile is set up so clients can find you.</p>'}
+    <a href="/designers/me/requests" class="btn-ghost" style="margin-top:12px">View all requests</a>
+  </section>
+  ` : ''}
+</div>
+` }) %>

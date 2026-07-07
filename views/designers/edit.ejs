@@ -1,0 +1,31 @@
+<%- include('../layout', { title: 'Edit Profile — Forma', body: `
+<div class="auth-page">
+  <div class="auth-card" style="max-width:560px">
+    <h1 class="auth-title">Your designer profile</h1>
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+    <form method="POST" action="/designers/me/edit" class="auth-form">
+      <label>Bio
+        <textarea name="bio" rows="4" placeholder="Tell homeowners about your experience and style…">${profile.bio || ''}</textarea>
+      </label>
+      <label>Specialties (comma-separated)
+        <input type="text" name="specialties"
+               value="${(profile.specialties || []).join(', ')}"
+               placeholder="interior, landscape, kitchen" />
+      </label>
+      <label>Location
+        <input type="text" name="location" value="${profile.location || ''}" placeholder="San Francisco, CA" />
+      </label>
+      <label>Hourly rate (USD)
+        <input type="number" name="rate_per_hr" min="0" step="5"
+               value="${profile.rate_per_hr || ''}" placeholder="95" />
+      </label>
+      <label class="checkbox-label">
+        <input type="checkbox" name="available" ${profile.available !== false ? 'checked' : ''} />
+        Available for new projects
+      </label>
+      <button type="submit" class="btn-primary btn-full">Save profile</button>
+    </form>
+    <a href="/dashboard" class="btn-ghost btn-full" style="margin-top:8px">← Back to dashboard</a>
+  </div>
+</div>
+` }) %>

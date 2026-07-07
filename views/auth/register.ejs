@@ -1,0 +1,38 @@
+<%- include('../layout', { title: 'Create account — Forma', body: `
+<div class="auth-page">
+  <div class="auth-card">
+    <a href="/" class="auth-logo">
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+        <path d="M6 8 L34 8 L34 24 L22 24 L22 32 L6 32 Z" stroke="#33E566" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+        <circle cx="30" cy="10.5" r="2" fill="#33E566"/>
+      </svg>
+      Forma
+    </a>
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-sub">Free to join · no credit card needed</p>
+
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+    <form method="POST" action="/register" class="auth-form">
+      <label>Full name
+        <input type="text" name="name" required autocomplete="name" placeholder="Jane Smith" />
+      </label>
+      <label>Email
+        <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+      </label>
+      <label>Password
+        <input type="password" name="password" required minlength="8" placeholder="Min 8 characters" />
+      </label>
+      <label>I am a…
+        <select name="role">
+          <option value="homeowner">Homeowner / renter</option>
+          <option value="designer">Designer / contractor</option>
+        </select>
+      </label>
+      <button type="submit" class="btn-primary btn-full">Create account</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="/login">Sign in</a></p>
+  </div>
+</div>
+` }) %>

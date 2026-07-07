@@ -1,0 +1,28 @@
+<%- include('../layout', { title: 'New Project — Forma', body: `
+<div class="auth-page">
+  <div class="auth-card" style="max-width:480px">
+    <h1 class="auth-title">Create a project</h1>
+    <p class="auth-sub">Or scan your space in the iOS app to auto-populate.</p>
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+    <form method="POST" action="/projects" class="auth-form">
+      <label>Project name *
+        <input type="text" name="name" required placeholder="My living room" />
+      </label>
+      <label>Address
+        <input type="text" name="address" placeholder="123 Main St, City, ST" />
+      </label>
+      <label>Space type
+        <select name="space_type">
+          <option value="interior">Interior</option>
+          <option value="outdoor">Outdoor / yard</option>
+        </select>
+      </label>
+      <label>Area (m²)
+        <input type="number" name="area_m2" min="0" step="0.1" placeholder="42" />
+      </label>
+      <button type="submit" class="btn-primary btn-full">Create project</button>
+    </form>
+    <a href="/dashboard" class="btn-ghost btn-full" style="margin-top:8px">Cancel</a>
+  </div>
+</div>
+` }) %>

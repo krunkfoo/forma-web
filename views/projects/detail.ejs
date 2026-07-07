@@ -1,0 +1,56 @@
+<%- include('../layout', { title: `${project.name} — Forma`, body: `
+<div class="dash-page">
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title">${project.name}</h1>
+      <p class="dash-sub">${project.space_type || 'interior'} ${project.area_m2 ? '· ' + Math.round(project.area_m2) + ' m²' : ''} ${project.address ? '· ' + project.address : ''}</p>
+    </div>
+    <a href="/dashboard" class="btn-ghost">← Dashboard</a>
+  </div>
+
+  ${project.design_data ? `
+    <section class="dash-section">
+      <h2>AI Design</h2>
+      <div class="design-preview">
+        ${project.design_data.imageUrl ? `<img src="${project.design_data.imageUrl}" alt="AI design" class="design-img"/>` : ''}
+        ${project.design_data.description ? `<p>${project.design_data.description}</p>` : ''}
+      </div>
+    </section>
+  ` : `
+    <section class="dash-section empty-state">
+      <p>No design generated yet. Open the iOS app and run Forma's AI design on this project.</p>
+    </section>
+  `}
+
+  <section class="dash-section">
+    <h2>Hire a designer for this project</h2>
+    <p class="dash-section-sub">Share your scan with a professional who can bring your vision to life.</p>
+    <a href="/designers" class="btn-primary">Browse designers</a>
+  </section>
+
+  ${requests.length ? `
+  <section class="dash-section">
+    <h2>Designer requests</h2>
+    <div class="request-list">
+      ${requests.map(r => `
+        <div class="request-card">
+          <div class="request-meta">
+            <img src="${r.designer_avatar || ''}" class="avatar-sm" onerror="this.style.display='none'" />
+            <strong>${r.designer_name}</strong>
+            <span class="status-badge status-${r.status}">${r.status}</span>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  </section>
+  ` : ''}
+
+  <section class="dash-section">
+    <form method="POST" action="/projects/${project.id}/delete"
+          onsubmit="return confirm('Delete this project?')"
+          style="margin-top:24px">
+      <button type="submit" class="btn-danger btn-sm">Delete project</button>
+    </form>
+  </section>
+</div>
+` }) %>

@@ -1,0 +1,35 @@
+<%- include('../layout', { title: 'Requests — Forma', body: `
+<div class="dash-page">
+  <div class="dash-header">
+    <div>
+      <h1 class="dash-title">Client requests</h1>
+      <p class="dash-sub">All hire requests sent to you</p>
+    </div>
+    <a href="/dashboard" class="btn-ghost">← Dashboard</a>
+  </div>
+
+  ${requests.length === 0 ? '<p class="empty-text">No requests yet.</p>' : `
+  <div class="request-list">
+    ${requests.map(r => `
+    <div class="request-card">
+      <div class="request-meta">
+        <strong>${r.homeowner_name}</strong>
+        <a href="mailto:${r.homeowner_email}" class="link-muted">${r.homeowner_email}</a>
+        ${r.project_name ? `· <em>${r.project_name} (${r.space_type || ''}${r.area_m2 ? ', ' + Math.round(r.area_m2) + ' m²' : ''})</em>` : ''}
+        <span class="status-badge status-${r.status}">${r.status}</span>
+        <span class="request-date">${new Date(r.created_at).toLocaleDateString()}</span>
+      </div>
+      ${r.message ? `<p class="request-msg">"${r.message}"</p>` : ''}
+      ${r.budget ? `<p class="request-budget">Budget: <strong>$${Number(r.budget).toLocaleString()}</strong></p>` : ''}
+      ${r.status === 'pending' ? `
+        <form method="POST" action="/designers/me/requests/${r.id}/respond" class="request-actions">
+          <button name="action" value="accept" class="btn-primary btn-sm">Accept</button>
+          <button name="action" value="decline" class="btn-ghost btn-sm">Decline</button>
+        </form>
+      ` : ''}
+    </div>
+    `).join('')}
+  </div>
+  `}
+</div>
+` }) %>

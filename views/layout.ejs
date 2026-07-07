@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title || 'Forma' %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-logo">
+      <svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 8 L34 8 L34 24 L22 24 L22 32 L6 32 Z" stroke="#33E566" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+        <circle cx="30" cy="10.5" r="2" fill="#33E566"/>
+      </svg>
+      Forma
+    </a>
+    <div class="nav-links">
+      <a href="/designers">Find Designers</a>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <a href="/dashboard" class="nav-cta">Dashboard</a>
+        <form method="POST" action="/logout" style="display:inline">
+          <button type="submit" class="nav-link-btn">Sign out</button>
+        </form>
+      <% } else { %>
+        <a href="/login">Sign in</a>
+        <a href="/register" class="nav-cta">Get started</a>
+      <% } %>
+    </div>
+  </nav>
+
+  <main>
+    <%- body %>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span class="footer-logo">Forma</span>
+      <span>© <%= new Date().getFullYear() %> Forma. All rights reserved.</span>
+      <div class="footer-links">
+        <a href="/designers">Designers</a>
+        <a href="/register?role=designer">Become a designer</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

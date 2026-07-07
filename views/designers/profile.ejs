@@ -1,0 +1,100 @@
+<%- include('../layout', { title: `${designer.name} — Forma`, body: `
+<div class="profile-page">
+  <div class="profile-hero">
+    <div class="profile-avatar-wrap">
+      ${designer.avatar_url
+        ? `<img src="${designer.avatar_url}" class="profile-avatar" alt="${designer.name}" />`
+        : `<div class="profile-avatar avatar-placeholder-lg">${designer.name.charAt(0)}</div>`}
+    </div>
+    <div class="profile-info">
+      <h1>${designer.name}</h1>
+      ${designer.location ? `<p class="profile-location">📍 ${designer.location}</p>` : ''}
+      <div class="tag-row">
+        ${(designer.specialties || []).map(s => `<span class="tag">${s}</span>`).join('')}
+      </div>
+      <div class="profile-stats">
+        <span class="rating-lg">${'★'.repeat(Math.round(designer.rating || 0))}${'☆'.repeat(5 - Math.round(designer.rating || 0))}</span>
+        <span>${designer.review_count || 0} reviews</span>
+        ${designer.rate_per_hr ? `<span class="profile-rate">$${Math.round(designer.rate_per_hr)}/hr</span>` : ''}
+        ${designer.available ? '<span class="avail-label">✓ Available</span>' : '<span class="unavail-label">Unavailable</span>'}
+      </div>
+    </div>
+  </div>
+
+  <div class="profile-body">
+    <div class="profile-main">
+      ${designer.bio ? `
+        <section class="profile-section">
+          <h2>About</h2>
+          <p>${designer.bio}</p>
+        </section>
+      ` : ''}
+
+      ${designer.portfolio && designer.portfolio.length ? `
+        <section class="profile-section">
+          <h2>Portfolio</h2>
+          <div class="portfolio-grid">
+            ${designer.portfolio.map(item => `
+              <div class="portfolio-card">
+                ${item.image_url ? `<img src="${item.image_url}" alt="${item.title}" />` : ''}
+                <h4>${item.title || ''}</h4>
+                ${item.description ? `<p>${item.description}</p>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      ` : ''}
+
+      ${reviews.length ? `
+        <section class="profile-section">
+          <h2>Reviews</h2>
+          <div class="reviews-list">
+            ${reviews.map(r => `
+              <div class="review-card">
+                <div class="review-header">
+                  <strong>${r.reviewer_name}</strong>
+                  <span class="review-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</span>
+                  <span class="review-date">${new Date(r.created_at).toLocaleDateString()}</span>
+                </div>
+                ${r.comment ? `<p>${r.comment}</p>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      ` : ''}
+    </div>
+
+    <div class="profile-sidebar">
+      ${user && user.role === 'homeowner' ? `
+        <div class="hire-card">
+          <h3>Hire ${designer.name.split(' ')[0]}</h3>
+          <form method="POST" action="/designers/${designer.id}/hire" class="hire-form">
+            ${projects.length ? `
+              <label>Attach a project (optional)
+                <select name="project_id">
+                  <option value="">— No project —</option>
+                  ${projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+                </select>
+              </label>
+            ` : ''}
+            <label>Budget (USD, optional)
+              <input type="number" name="budget" min="0" placeholder="e.g. 2000" />
+            </label>
+            <label>Message
+              <textarea name="message" rows="4" placeholder="Describe your project and what you need…"></textarea>
+            </label>
+            <button type="submit" class="btn-primary btn-full">Send request</button>
+          </form>
+        </div>
+      ` : user ? '' : `
+        <div class="hire-card">
+          <h3>Work with this designer</h3>
+          <p>Create a free account to send a hire request.</p>
+          <a href="/register" class="btn-primary btn-full">Get started</a>
+          <a href="/login" class="btn-ghost btn-full" style="margin-top:8px">Sign in</a>
+        </div>
+      `}
+    </div>
+  </div>
+</div>
+` }) %>
