@@ -1,3 +1,9 @@
+databases:
+  - name: forma-db
+    plan: free
+    databaseName: forma
+    user: forma
+
 services:
   - type: web
     name: forma-web
@@ -12,4 +18,6 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DATABASE_URL
-        sync: false   # Set this manually in Render dashboard using your existing DB URL
+        fromDatabase:
+          name: forma-db
+          property: connectionString
