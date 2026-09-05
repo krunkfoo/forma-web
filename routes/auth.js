@@ -277,7 +277,8 @@ router.get('/auth/google/callback', async (req, res) => {
     const tokens = await tokenRes.json();
     if (!tokens.access_token) {
       console.error('[Google OAuth] token exchange failed', tokens);
-      return res.redirect('/login?error=google_failed');
+      const detail = encodeURIComponent(tokens.error_description || tokens.error || 'token_exchange_failed');
+      return res.redirect(`/login?error=google_failed&detail=${detail}`);
     }
 
     // Get user info
