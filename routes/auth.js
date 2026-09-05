@@ -229,6 +229,96 @@ router.post('/api/auth/register', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Google OAuth (web)
+// ---------------------------------------------------------------------------
+
+// GET /auth/google — redirect to Google
+router.get('/auth/google', (req, res) => {
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: `${process.env.BASE_URL || 'https://forma-web-edud.onrender.com'}/auth/google/callback`,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'online',
+    prompt: 'select_account',
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+// GET /auth/google/callback
+router.get('/auth/google/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error || !code) {
+    return res.redirect('/login?error=google_cancelled');
+  }
+  try {
+    const baseUrl = process.env.BASE_URL || 'https://forma-web-edud.onrender.com';
+
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${baseUrl}/auth/google/callback`,
+        grant_type: 'authorization_code',
+      }),
+    });
+    const tokens = await tokenRes.json();
+    if (!tokens.access_token) {
+      console.error('[Google OAuth] token exchange failed', tokens);
+      return res.redirect('/login?error=google_failed');
+    }
+
+    // Get user info
+    const infoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    const profile = await infoRes.json();
+    const { id: google_sub, email, name } = profile;
+
+    if (!google_sub || !email) {
+      return res.redirect('/login?error=google_no_email');
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    let user = null;
+
+    // 1. Lookup by google_sub
+    const byGoogle = await db.query('SELECT * FROM users WHERE google_sub=$1', [google_sub]);
+    if (byGoogle.rows[0]) {
+      user = byGoogle.rows[0];
+    } else {
+      // 2. Link existing account by email
+      const byEmail = await db.query('SELECT * FROM users WHERE email=$1', [normalizedEmail]);
+      if (byEmail.rows[0]) {
+        user = byEmail.rows[0];
+        await db.query('UPDATE users SET google_sub=$1 WHERE id=$2', [google_sub, user.id]);
+      }
+    }
+
+    // 3. Create new account
+    if (!user) {
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const hash = await bcrypt.hash(randomPassword, 12);
+      const { rows } = await db.query(
+        'INSERT INTO users (name, email, password, role, google_sub) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [(name || 'Google User').trim(), normalizedEmail, hash, 'homeowner', google_sub]
+      );
+      user = rows[0];
+    }
+
+    res.cookie('token', signToken(user), { httpOnly: true, maxAge: 7 * 86400000 });
+    res.redirect('/dashboard');
+  } catch (err) {
+    console.error('[Google OAuth]', err);
+    res.redirect('/login?error=google_failed');
+  }
+});
+
 // POST /api/auth/apple
 router.post('/api/auth/apple', async (req, res) => {
   const { appleToken, name: bodyName, email: bodyEmail } = req.body;

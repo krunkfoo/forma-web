@@ -139,3 +139,7 @@ CREATE TABLE IF NOT EXISTS processing_jobs (
 -- Apple Sign In: stable per-user identifier returned in the JWT `sub` claim
 ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub TEXT UNIQUE;
 CREATE INDEX IF NOT EXISTS users_apple_sub_idx ON users (apple_sub) WHERE apple_sub IS NOT NULL;
+
+-- Google Sign In
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT UNIQUE;
+CREATE INDEX IF NOT EXISTS users_google_sub_idx ON users (google_sub) WHERE google_sub IS NOT NULL;

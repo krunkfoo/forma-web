@@ -113,6 +113,41 @@ img { max-width: 100%; display: block; }
 }
 .btn-ghost:hover { border-color: rgba(255,255,255,0.2); }
 
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 20px;
+  background: #fff;
+  color: #1f1f1f;
+  font-weight: 500;
+  font-size: 15px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.btn-google:hover { background: #f1f1f1; color: #1f1f1f; }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: rgba(255,255,255,0.3);
+  font-size: 13px;
+}
+.auth-divider::before, .auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .btn-danger {
   display: inline-block;
   background: #c0392b;

@@ -24,6 +24,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Diagnostic (remove after fix) ───────────────────────────
+app.get('/health', async (req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.json({ db: 'ok', node_env: process.env.NODE_ENV, has_db_url: !!process.env.DATABASE_URL });
+  } catch (err) {
+    res.status(500).json({ db: 'error', message: err.message, code: err.code, node_env: process.env.NODE_ENV, has_db_url: !!process.env.DATABASE_URL });
+  }
+});
+
 // ── Routes ──────────────────────────────────────────────────
 app.use('/', require('./routes/auth'));
 app.use('/projects', require('./routes/projects'));
