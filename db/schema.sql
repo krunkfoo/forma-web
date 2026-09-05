@@ -77,6 +77,16 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Password reset tokens
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id    UUID REFERENCES users(id) ON DELETE CASCADE,
+  token      TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used       BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Recalculate designer rating after review insert
 CREATE OR REPLACE FUNCTION update_designer_rating() RETURNS TRIGGER AS $$
 BEGIN
@@ -95,3 +105,33 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER after_review_insert
 AFTER INSERT OR UPDATE ON reviews
 FOR EACH ROW EXECUTE FUNCTION update_designer_rating();
+
+-- Scans uploaded from iOS app
+CREATE TABLE IF NOT EXISTS scans (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id         UUID REFERENCES users(id) ON DELETE CASCADE,
+  project_id      UUID REFERENCES projects(id) ON DELETE SET NULL,
+  name            TEXT NOT NULL DEFAULT 'Scan',
+  space_type      TEXT NOT NULL DEFAULT 'interior',  -- 'interior' | 'outdoor'
+  area_m2         NUMERIC(10,2),
+  room_snapshot   JSONB,   -- RoomSnapshot: walls, openings, furniture
+  site_plan       JSONB,   -- SitePlan: boundary, dimensions, features, wallLines
+  scan_metadata   JSONB,   -- classification, confidence, ceiling height etc
+  thumbnail_url   TEXT,
+  video_url       TEXT,    -- uploaded outdoor video for LingBot-Map
+  status          TEXT DEFAULT 'pending',  -- 'pending' | 'processing' | 'ready' | 'failed'
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Processing jobs for LingBot-Map outdoor video processing
+CREATE TABLE IF NOT EXISTS processing_jobs (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  scan_id     UUID REFERENCES scans(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL DEFAULT 'lingbot_map',
+  status      TEXT DEFAULT 'queued',  -- 'queued' | 'running' | 'completed' | 'failed'
+  result      JSONB,
+  error       TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);

@@ -1,0 +1,33 @@
+<%- include('../layout', { title: 'Set new password — Forma', body: `
+<div class="auth-page">
+  <div class="auth-card">
+    <a href="/" class="auth-logo">
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+        <path d="M6 8 L34 8 L34 24 L22 24 L22 32 L6 32 Z" stroke="#33E566" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+        <circle cx="30" cy="10.5" r="2" fill="#33E566"/>
+      </svg>
+      Forma
+    </a>
+    <h1 class="auth-title">Set new password</h1>
+
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+    ${success ? `
+      <div class="alert alert-success" style="margin-bottom:16px;">Password updated! You can now sign in.</div>
+      <p class="auth-switch"><a href="/login">Sign in →</a></p>
+    ` : token ? `
+      <form method="POST" action="/reset-password/${token}" class="auth-form">
+        <label>New password
+          <input type="password" name="password" required minlength="8" placeholder="At least 8 characters" />
+        </label>
+        <label>Confirm password
+          <input type="password" name="confirm" required minlength="8" placeholder="Repeat password" />
+        </label>
+        <button type="submit" class="btn-primary btn-full">Update password</button>
+      </form>
+    ` : `
+      <p class="auth-sub">This link is invalid or expired. <a href="/forgot-password">Request a new one</a>.</p>
+    `}
+  </div>
+</div>
+` }) %>

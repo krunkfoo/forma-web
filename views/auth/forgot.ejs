@@ -1,0 +1,34 @@
+<%- include('../layout', { title: 'Reset password — Forma', body: `
+<div class="auth-page">
+  <div class="auth-card">
+    <a href="/" class="auth-logo">
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+        <path d="M6 8 L34 8 L34 24 L22 24 L22 32 L6 32 Z" stroke="#33E566" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+        <circle cx="30" cy="10.5" r="2" fill="#33E566"/>
+      </svg>
+      Forma
+    </a>
+    <h1 class="auth-title">Forgot password?</h1>
+    <p class="auth-sub">Enter your email and we'll give you a reset link.</p>
+
+    ${error ? `<div class="alert alert-error">${error}</div>` : ''}
+
+    ${sent ? `
+      <div class="alert alert-success" style="margin-bottom:16px;">
+        ${resetLink
+          ? `Your reset link: <a href="${resetLink}" style="color:#33E566;word-break:break-all;">${resetLink}</a>`
+          : 'If that email is registered, a reset link has been sent.'}
+      </div>
+      <p class="auth-switch"><a href="/login">← Back to sign in</a></p>
+    ` : `
+      <form method="POST" action="/forgot-password" class="auth-form">
+        <label>Email
+          <input type="email" name="email" required autocomplete="email" placeholder="you@example.com" />
+        </label>
+        <button type="submit" class="btn-primary btn-full">Send reset link</button>
+      </form>
+      <p class="auth-switch"><a href="/login">← Back to sign in</a></p>
+    `}
+  </div>
+</div>
+` }) %>

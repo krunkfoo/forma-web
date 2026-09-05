@@ -1,0 +1,75 @@
+<%- include('layout', { title: scan.name + ' — Forma', body: `
+<div class="scan-viewer-page">
+  <div class="scan-viewer-header">
+    <div class="scan-viewer-title-row">
+      <div>
+        <h1 class="scan-viewer-title">${scan.name}</h1>
+        <div class="scan-viewer-meta">
+          <span class="scan-type-badge scan-type-${scan.space_type}">
+            ${scan.space_type === 'interior' ? 'Interior' : 'Outdoor'}
+          </span>
+          ${scan.area_m2 ? `<span class="scan-area">${Math.round(scan.area_m2)} m²</span>` : ''}
+        </div>
+      </div>
+      <div class="scan-viewer-actions">
+        <button class="btn-ghost btn-edit-disabled" disabled>
+          Edit &nbsp;<span class="coming-soon-badge">Coming soon</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="scan-canvas-wrap">
+    <canvas id="planCanvas"></canvas>
+
+    <div class="plan-legend">
+      ${scan.space_type === 'interior' ? `
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:#e8e8e8;border:none"></span>
+          Walls
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:none;border:2px dashed #4a9eff"></span>
+          Doors
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:none;border:2px dashed #33E566"></span>
+          Windows
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:rgba(255,200,80,0.35);border:1px solid rgba(255,200,80,0.7)"></span>
+          Furniture
+        </div>
+      ` : `
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:rgba(51,229,102,0.2);border:2px solid #33E566"></span>
+          Boundary
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:#aaa;border:none"></span>
+          Walls
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:rgba(60,180,60,0.7);border:none;border-radius:50%"></span>
+          Trees / Shrubs
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch" style="background:rgba(160,140,100,0.5);border:none"></span>
+          Hardscape
+        </div>
+      `}
+    </div>
+  </div>
+</div>
+
+<script>
+  window.SCAN_DATA = ${JSON.stringify({
+    space_type: scan.space_type,
+    area_m2:    scan.area_m2,
+    room_snapshot: scan.room_snapshot,
+    site_plan:     scan.site_plan,
+    scan_metadata: scan.scan_metadata
+  })};
+</script>
+<script src="/js/plan-viewer.js"></script>
+` }) %>

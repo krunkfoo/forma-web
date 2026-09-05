@@ -45,6 +45,38 @@
     `}
   </section>
 
+  ${typeof scans !== 'undefined' && scans && scans.length ? `
+  <section class="dash-section">
+    <h2>Recent Scans</h2>
+    <div class="scan-grid">
+      ${scans.map(s => `
+        <a href="/scans/${s.id}/view" class="scan-card">
+          <div class="scan-card-thumb">
+            ${s.thumbnail_url
+              ? `<img src="${s.thumbnail_url}" alt="${s.name}" />`
+              : `<div class="scan-card-thumb-empty">
+                   <svg width="28" height="28" viewBox="0 0 40 40" fill="none">
+                     <rect x="5" y="5" width="30" height="30" rx="3" stroke="#33E56630" stroke-width="2" fill="none"/>
+                     <path d="M5 15 L15 15 L15 5" stroke="#33E56640" stroke-width="1.5" fill="none"/>
+                     <path d="M35 25 L25 25 L25 35" stroke="#33E56640" stroke-width="1.5" fill="none"/>
+                   </svg>
+                 </div>`
+            }
+          </div>
+          <div class="scan-card-body">
+            <div class="scan-type-badge scan-type-${s.space_type}" style="font-size:10px;padding:2px 8px;margin-bottom:6px;display:inline-block">
+              ${s.space_type === 'interior' ? 'Interior' : 'Outdoor'}
+            </div>
+            <h3>${s.name}</h3>
+            ${s.area_m2 ? `<p class="project-card-area">${Math.round(s.area_m2)} m²</p>` : ''}
+            <p class="scan-card-date">${new Date(s.created_at).toLocaleDateString()}</p>
+          </div>
+        </a>
+      `).join('')}
+    </div>
+  </section>
+  ` : ''}
+
   <section class="dash-section">
     <h2>Find a designer</h2>
     <p class="dash-section-sub">Browse professionals who can bring your design to life.</p>

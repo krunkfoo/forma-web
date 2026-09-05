@@ -24,9 +24,11 @@ app.use((req, res, next) => {
 });
 
 // ── Routes ──────────────────────────────────────────────────
+app.use('/api/scans', require('./routes/scans'));
 app.use('/', require('./routes/auth'));
 app.use('/projects', require('./routes/projects'));
 app.use('/designers', require('./routes/designers'));
+app.use('/scans',     require('./routes/scans'));
 
 // Landing page
 app.get('/', (req, res) => {
@@ -36,7 +38,7 @@ app.get('/', (req, res) => {
 // Dashboard
 app.get('/dashboard', requireAuth, async (req, res) => {
   const user = req.user;
-  let projects = [], requests = [];
+  let projects = [], requests = [], scans = [];
 
   if (user.role === 'homeowner') {
     const { rows } = await db.query(
@@ -44,6 +46,12 @@ app.get('/dashboard', requireAuth, async (req, res) => {
       [user.id]
     );
     projects = rows;
+
+    const { rows: scanRows } = await db.query(
+      'SELECT * FROM scans WHERE user_id=$1 ORDER BY created_at DESC LIMIT 6',
+      [user.id]
+    );
+    scans = scanRows;
   } else if (user.role === 'designer') {
     const { rows } = await db.query(
       `SELECT hr.*, u.name AS homeowner_name
@@ -60,6 +68,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
     user,
     projects,
     requests,
+    scans,
     hired: req.query.hired === '1',
   });
 });
