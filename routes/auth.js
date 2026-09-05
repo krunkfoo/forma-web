@@ -36,7 +36,14 @@ router.post('/register', async (req, res) => {
 });
 
 // GET /login
-router.get('/login', (req, res) => res.render('auth/login', { error: null }));
+router.get('/login', (req, res) => {
+  const errorMap = {
+    google_cancelled: 'Google sign-in was cancelled.',
+    google_failed: `Google sign-in failed: ${req.query.detail || 'unknown error'}`,
+    google_no_email: 'Google did not provide an email address.',
+  };
+  res.render('auth/login', { error: errorMap[req.query.error] || null });
+});
 
 // POST /login
 router.post('/login', async (req, res) => {
@@ -314,8 +321,9 @@ router.get('/auth/google/callback', async (req, res) => {
     res.cookie('token', signToken(user), { httpOnly: true, maxAge: 7 * 86400000 });
     res.redirect('/dashboard');
   } catch (err) {
-    console.error('[Google OAuth]', err);
-    res.redirect('/login?error=google_failed');
+    console.error('[Google OAuth]', err.message, err.code);
+    const detail = encodeURIComponent(err.message || 'unknown');
+    res.redirect(`/login?error=google_failed&detail=${detail}`);
   }
 });
 
