@@ -83,6 +83,11 @@ app.get('/dashboard', requireAuth, async (req, res) => {
   });
 });
 
+// ── Startup checks ──────────────────────────────────────────
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  console.warn('⚠ JWT_SECRET is weak or missing — set a strong secret in production');
+}
+
 // ── DB init + start ─────────────────────────────────────────
 async function start() {
   try {

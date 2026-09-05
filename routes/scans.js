@@ -55,11 +55,9 @@ router.get('/api/scans', requireApiAuth, async (req, res) => {
 // ── API: get scan ──────────────────────────────────────────────────────────────
 router.get('/api/scans/:id', requireApiAuth, async (req, res) => {
   try {
-    const { rows } = await db.query(
-      'SELECT * FROM scans WHERE id=$1 AND user_id=$2',
-      [req.params.id, req.user.id]
-    );
+    const { rows } = await db.query('SELECT * FROM scans WHERE id=$1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    if (rows[0].user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Server error' });
@@ -138,11 +136,9 @@ router.patch('/api/scans/:id', requireApiAuth, async (req, res) => {
 // ── Web viewer ─────────────────────────────────────────────────────────────────
 router.get('/:id/view', requireAuth, async (req, res) => {
   try {
-    const { rows } = await db.query(
-      'SELECT * FROM scans WHERE id=$1 AND user_id=$2',
-      [req.params.id, req.user.id]
-    );
+    const { rows } = await db.query('SELECT * FROM scans WHERE id=$1', [req.params.id]);
     if (!rows.length) return res.status(404).send('Scan not found');
+    if (rows[0].user_id !== req.user.id) return res.status(403).send('Forbidden');
     res.render('scan', { scan: rows[0], user: req.user });
   } catch (err) {
     console.error('GET /scans/:id/view error', err);
@@ -199,6 +195,12 @@ router.post('/api/scans/:id/suggest', requireApiAuth, async (req, res) => {
         }, {});
         context += `\nOutdoor features: ${Object.entries(featureSummary).map(([k,v]) => `${v} ${k}`).join(', ')}`;
       }
+    }
+
+    // Truncate scan data if too large
+    const scanDataStr = JSON.stringify(scan);
+    if (scanDataStr.length > 8000) {
+      context = scanDataStr.slice(0, 8000) + '[data truncated for brevity]';
     }
 
     const systemPrompt = `You are an expert interior and landscape designer. The user has scanned their space using LiDAR and you have access to the actual measurements and detected objects. Give specific, actionable advice based on the real data provided. Be concise — 2-4 sentences max unless the user asks for more detail. Use metric measurements.

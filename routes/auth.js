@@ -1,14 +1,40 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const db = require('../db');
 const { signToken } = require('../middleware/auth');
+
+// ── Rate limiters ────────────────────────────────────────────
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many login attempts — please try again in 15 minutes.',
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many registration attempts — please try again later.',
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many password reset requests — please try again later.',
+});
 
 // GET /register
 router.get('/register', (req, res) => res.render('auth/register', { error: null }));
 
 // POST /register
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password) {
     return res.render('auth/register', { error: 'All fields are required.' });
@@ -46,7 +72,7 @@ router.get('/login', (req, res) => {
 });
 
 // POST /login
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.render('auth/login', { error: 'Enter your email and password.' });
@@ -77,7 +103,7 @@ router.get('/forgot-password', (req, res) => {
 });
 
 // POST /forgot-password
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   if (!email) {
     return res.render('auth/forgot', { error: 'Enter your email address.', sent: false, resetLink: null });
@@ -91,8 +117,9 @@ router.post('/forgot-password', async (req, res) => {
     const user = rows[0];
     const token = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-    // Invalidate any existing tokens for this user
+    // Invalidate any existing tokens for this user and clean up expired rows
     await db.query('UPDATE password_resets SET used=TRUE WHERE user_id=$1', [user.id]);
+    await db.query('DELETE FROM password_resets WHERE expires_at < NOW()');
     await db.query(
       'INSERT INTO password_resets (user_id, token, expires_at) VALUES ($1,$2,$3)',
       [user.id, token, expires]
@@ -185,7 +212,7 @@ router.post('/reset-password/:token', async (req, res) => {
 // ---------------------------------------------------------------------------
 
 // POST /api/auth/login
-router.post('/api/auth/login', async (req, res) => {
+router.post('/api/auth/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: 'email and password are required' });
@@ -207,7 +234,7 @@ router.post('/api/auth/login', async (req, res) => {
 });
 
 // POST /api/auth/register
-router.post('/api/auth/register', async (req, res) => {
+router.post('/api/auth/register', registerLimiter, async (req, res) => {
   const { name, email, password, role } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'name, email, and password are required' });
@@ -242,6 +269,8 @@ router.post('/api/auth/register', async (req, res) => {
 
 // GET /auth/google — redirect to Google
 router.get('/auth/google', (req, res) => {
+  const state = crypto.randomBytes(16).toString('hex');
+  res.cookie('google_oauth_state', state, { httpOnly: true, maxAge: 10 * 60 * 1000, sameSite: 'lax' });
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: `${process.env.BASE_URL || 'https://forma-web-edud.onrender.com'}/auth/google/callback`,
@@ -249,16 +278,22 @@ router.get('/auth/google', (req, res) => {
     scope: 'openid email profile',
     access_type: 'online',
     prompt: 'select_account',
+    state,
   });
   res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
 });
 
 // GET /auth/google/callback
 router.get('/auth/google/callback', async (req, res) => {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
   if (error || !code) {
     return res.redirect('/login?error=google_cancelled');
   }
+  const expectedState = req.cookies && req.cookies.google_oauth_state;
+  if (!state || !expectedState || state !== expectedState) {
+    return res.redirect('/login?error=google_failed&detail=invalid_state');
+  }
+  res.clearCookie('google_oauth_state');
   try {
     const baseUrl = process.env.BASE_URL || 'https://forma-web-edud.onrender.com';
 
@@ -336,6 +371,8 @@ router.get('/auth/google/callback', async (req, res) => {
 // (iOS calls this to get the URL, then opens it in ASWebAuthenticationSession)
 router.get('/api/auth/google/ios', (req, res) => {
   const baseUrl = process.env.BASE_URL || 'https://forma-web-edud.onrender.com';
+  const state = crypto.randomBytes(16).toString('hex');
+  res.cookie('google_oauth_state', state, { httpOnly: true, maxAge: 10 * 60 * 1000, sameSite: 'lax' });
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: `${baseUrl}/api/auth/google/ios-callback`,
@@ -343,16 +380,22 @@ router.get('/api/auth/google/ios', (req, res) => {
     scope: 'openid email profile',
     access_type: 'online',
     prompt: 'select_account',
+    state,
   });
   res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
 });
 
 // GET /api/auth/google/ios-callback — Google redirects here; we then redirect to forma://
 router.get('/api/auth/google/ios-callback', async (req, res) => {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
   if (error || !code) {
     return res.redirect('forma://auth/callback?error=cancelled');
   }
+  const expectedState = req.cookies && req.cookies.google_oauth_state;
+  if (!state || !expectedState || state !== expectedState) {
+    return res.redirect('forma://auth/callback?error=invalid_state');
+  }
+  res.clearCookie('google_oauth_state');
   try {
     const baseUrl = process.env.BASE_URL || 'https://forma-web-edud.onrender.com';
 
