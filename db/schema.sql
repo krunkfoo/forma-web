@@ -135,3 +135,7 @@ CREATE TABLE IF NOT EXISTS processing_jobs (
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Apple Sign In: stable per-user identifier returned in the JWT `sub` claim
+ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub TEXT UNIQUE;
+CREATE INDEX IF NOT EXISTS users_apple_sub_idx ON users (apple_sub) WHERE apple_sub IS NOT NULL;

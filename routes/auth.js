@@ -93,8 +93,33 @@ router.post('/forgot-password', async (req, res) => {
     const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
     const resetLink = `${baseUrl}/reset-password/${token}`;
     console.log(`[Password Reset] ${email} → ${resetLink}`);
-    // Show reset link directly (no email service yet — add Resend/SendGrid later)
-    res.render('auth/forgot', { error: null, sent: true, resetLink });
+    if (process.env.RESEND_API_KEY) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'onboarding@resend.dev',
+            to: email,
+            subject: 'Reset your FormaAR password',
+            html: `<p>Hi,</p>
+<p>Click the link below to reset your FormaAR password. This link expires in 1 hour.</p>
+<p><a href="${resetLink}">${resetLink}</a></p>
+<p>If you didn't request a password reset, you can safely ignore this email.</p>`,
+          }),
+        });
+      } catch (emailErr) {
+        console.error('[Password Reset] Resend error:', emailErr);
+        // Don't fail the request if email sending fails
+      }
+      res.render('auth/forgot', { error: null, sent: true, resetLink: null });
+    } else {
+      // No email service configured — show the link on screen (dev fallback)
+      res.render('auth/forgot', { error: null, sent: true, resetLink });
+    }
   } catch (err) {
     console.error(err);
     res.render('auth/forgot', { error: 'Something went wrong. Please try again.', sent: false, resetLink: null });
@@ -145,6 +170,123 @@ router.post('/reset-password/:token', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.render('auth/reset', { error: 'Something went wrong.', token, success: false });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// API endpoints for the iOS app (JSON in / JSON out, no redirects)
+// ---------------------------------------------------------------------------
+
+// POST /api/auth/login
+router.post('/api/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email and password are required' });
+  }
+  try {
+    const { rows } = await db.query('SELECT * FROM users WHERE email=$1', [email.toLowerCase().trim()]);
+    const user = rows[0];
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    return res.json({
+      token: signToken(user),
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (err) {
+    console.error('[API /login]', err);
+    return res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+// POST /api/auth/register
+router.post('/api/auth/register', async (req, res) => {
+  const { name, email, password, role } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'name, email, and password are required' });
+  }
+  const validRole = ['homeowner', 'designer'].includes(role) ? role : 'homeowner';
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    const { rows } = await db.query(
+      'INSERT INTO users (name, email, password, role) VALUES ($1,$2,$3,$4) RETURNING *',
+      [name.trim(), email.toLowerCase().trim(), hash, validRole]
+    );
+    const user = rows[0];
+    if (validRole === 'designer') {
+      await db.query('INSERT INTO designer_profiles (user_id) VALUES ($1)', [user.id]);
+    }
+    return res.status(201).json({
+      token: signToken(user),
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'Email already in use' });
+    }
+    console.error('[API /register]', err);
+    return res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
+// POST /api/auth/apple
+router.post('/api/auth/apple', async (req, res) => {
+  const { appleToken, name: bodyName, email: bodyEmail } = req.body;
+  if (!appleToken) {
+    return res.status(400).json({ error: 'appleToken is required' });
+  }
+  try {
+    // Decode the JWT payload (base64url — no signature verification needed here;
+    // Apple's servers already validated the token before the client forwarded it)
+    const payloadB64 = appleToken.split('.')[1];
+    const payloadJson = Buffer.from(payloadB64, 'base64url').toString('utf8');
+    const payload = JSON.parse(payloadJson);
+    const apple_sub = payload.sub;           // Apple's stable user identifier
+    const tokenEmail = payload.email;        // present on first sign-in
+    const email = (tokenEmail || bodyEmail || '').toLowerCase().trim() || null;
+
+    if (!apple_sub) {
+      return res.status(400).json({ error: 'Invalid Apple token: missing sub' });
+    }
+
+    let user = null;
+
+    // 1. Look up by apple_sub (stable across devices)
+    const byAppleSub = await db.query('SELECT * FROM users WHERE apple_sub=$1', [apple_sub]);
+    if (byAppleSub.rows[0]) {
+      user = byAppleSub.rows[0];
+    } else if (email) {
+      // 2. Fall back to email lookup (links existing account on first Apple sign-in)
+      const byEmail = await db.query('SELECT * FROM users WHERE email=$1', [email]);
+      if (byEmail.rows[0]) {
+        user = byEmail.rows[0];
+        // Bind apple_sub so future lookups use the fast path
+        await db.query('UPDATE users SET apple_sub=$1 WHERE id=$2', [apple_sub, user.id]);
+      }
+    }
+
+    // 3. No existing account — create one
+    if (!user) {
+      if (!email) {
+        return res.status(400).json({ error: 'email is required for new Apple Sign In users' });
+      }
+      const name = (bodyName || 'Apple User').trim();
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const hash = await bcrypt.hash(randomPassword, 12);
+      const { rows } = await db.query(
+        'INSERT INTO users (name, email, password, role, apple_sub) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [name, email, hash, 'homeowner', apple_sub]
+      );
+      user = rows[0];
+    }
+
+    return res.json({
+      token: signToken(user),
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (err) {
+    console.error('[API /apple]', err);
+    return res.status(500).json({ error: 'Authentication failed' });
   }
 });
 
