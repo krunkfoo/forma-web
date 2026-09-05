@@ -854,3 +854,93 @@ img { max-width: 100%; display: block; }
   .plan-legend        { bottom: 48px; right: 10px; padding: 8px 10px; }
   .scan-grid          { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
+
+/* ── AI Design Assistant ─────────────────────────────────── */
+.ai-assistant {
+  position: fixed;
+  bottom: 0;
+  right: 24px;
+  width: 340px;
+  background: #111a11;
+  border: 1px solid rgba(51,229,102,0.2);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+  z-index: 200;
+  font-family: Inter, sans-serif;
+}
+.ai-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: #33E566;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(51,229,102,0.15);
+  user-select: none;
+}
+.ai-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.ai-messages {
+  height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ai-msg {
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 90%;
+  word-break: break-word;
+}
+.ai-msg-bot {
+  background: rgba(51,229,102,0.1);
+  color: #d0f0d8;
+  align-self: flex-start;
+}
+.ai-msg-user {
+  background: rgba(255,255,255,0.08);
+  color: #f0f0f0;
+  align-self: flex-end;
+}
+.ai-input-row {
+  display: flex;
+  gap: 6px;
+}
+.ai-input {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #f0f0f0;
+  font-size: 13px;
+  outline: none;
+}
+.ai-input:focus { border-color: rgba(51,229,102,0.4); }
+.ai-send-btn { padding: 8px 14px; font-size: 13px; }
+.ai-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ai-chip {
+  background: rgba(51,229,102,0.1);
+  border: 1px solid rgba(51,229,102,0.25);
+  color: #33E566;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ai-chip:hover { background: rgba(51,229,102,0.2); }

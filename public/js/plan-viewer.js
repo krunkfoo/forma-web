@@ -34,6 +34,7 @@
 
   /* ── Transform state ─────────────────────────────────────── */
   var T = { scale: 40, tx: 0, ty: 0 };
+  window._planT = T;
 
   function toCanvas(wx, wz) {
     return [wx * T.scale + T.tx, wz * T.scale + T.ty];
@@ -45,6 +46,7 @@
     pad = pad || 60;
     if (!points || !points.length) {
       T = { scale: 40, tx: canvas.width / 2, ty: canvas.height / 2 };
+      window._planT = T;
       return;
     }
     var xs = points.map(function (p) { return p[0]; });
@@ -61,6 +63,7 @@
       tx: canvas.width  / 2 - ((minX + maxX) / 2) * scale,
       ty: canvas.height / 2 - ((minZ + maxZ) / 2) * scale,
     };
+    window._planT = T;
   }
 
   /* ── Wall geometry helpers ───────────────────────────────── */
@@ -432,6 +435,7 @@
     draw();
   }
 
+  window.planViewerDraw = draw;
   window.addEventListener('resize', resize);
   resize();
 })();
