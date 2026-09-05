@@ -5,6 +5,16 @@ const rateLimit = require('express-rate-limit');
 const db = require('../db');
 const { signToken } = require('../middleware/auth');
 
+// In-memory CSRF state store for iOS OAuth flow (cookie-based won't work with ASWebAuthenticationSession)
+// Keys expire after 10 minutes to prevent unbounded growth.
+const iosOAuthStates = new Map(); // state -> expiresAt (ms)
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of iosOAuthStates) {
+    if (v < now) iosOAuthStates.delete(k);
+  }
+}, 60_000); // clean up every minute
+
 // ── Rate limiters ────────────────────────────────────────────
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -372,7 +382,9 @@ router.get('/auth/google/callback', async (req, res) => {
 router.get('/api/auth/google/ios', (req, res) => {
   const baseUrl = process.env.BASE_URL || 'https://forma-web-edud.onrender.com';
   const state = crypto.randomBytes(16).toString('hex');
-  res.cookie('google_oauth_state', state, { httpOnly: true, maxAge: 10 * 60 * 1000, sameSite: 'lax' });
+  // Store state server-side — ASWebAuthenticationSession has its own cookie jar that
+  // doesn't share with URLSession, so cookies are unreliable for CSRF here.
+  iosOAuthStates.set(state, Date.now() + 10 * 60 * 1000);
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: `${baseUrl}/api/auth/google/ios-callback`,
@@ -385,17 +397,19 @@ router.get('/api/auth/google/ios', (req, res) => {
   res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
 });
 
-// GET /api/auth/google/ios-callback — Google redirects here; we then redirect to forma://
+// GET /api/auth/google/ios-callback — Google redirects here; we then redirect to com.raj.landscapear://
+const IOS_CALLBACK_SCHEME = 'com.raj.landscapear';
 router.get('/api/auth/google/ios-callback', async (req, res) => {
   const { code, error, state } = req.query;
   if (error || !code) {
-    return res.redirect('forma://auth/callback?error=cancelled');
+    return res.redirect(`${IOS_CALLBACK_SCHEME}://auth/callback?error=cancelled`);
   }
-  const expectedState = req.cookies && req.cookies.google_oauth_state;
-  if (!state || !expectedState || state !== expectedState) {
-    return res.redirect('forma://auth/callback?error=invalid_state');
+  // Validate CSRF state from server-side map (cookies don't cross ASWebAuthenticationSession boundary)
+  const stateExpiry = state && iosOAuthStates.get(state);
+  if (!stateExpiry || stateExpiry < Date.now()) {
+    return res.redirect(`${IOS_CALLBACK_SCHEME}://auth/callback?error=invalid_state`);
   }
-  res.clearCookie('google_oauth_state');
+  iosOAuthStates.delete(state);
   try {
     const baseUrl = process.env.BASE_URL || 'https://forma-web-edud.onrender.com';
 
@@ -414,7 +428,7 @@ router.get('/api/auth/google/ios-callback', async (req, res) => {
     const tokens = await tokenRes.json();
     if (!tokens.access_token) {
       console.error('[Google iOS OAuth] token exchange failed', tokens);
-      return res.redirect('forma://auth/callback?error=token_failed');
+      return res.redirect(`${IOS_CALLBACK_SCHEME}://auth/callback?error=token_failed`);
     }
 
     // Get user profile
@@ -424,7 +438,7 @@ router.get('/api/auth/google/ios-callback', async (req, res) => {
     const profile = await infoRes.json();
     const { id: google_sub, email, name } = profile;
     if (!google_sub || !email) {
-      return res.redirect('forma://auth/callback?error=no_email');
+      return res.redirect(`${IOS_CALLBACK_SCHEME}://auth/callback?error=no_email`);
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -453,10 +467,10 @@ router.get('/api/auth/google/ios-callback', async (req, res) => {
 
     const jwt = signToken(user);
     // Redirect back to the iOS app with the JWT; ASWebAuthenticationSession intercepts this
-    res.redirect(`forma://auth/callback?token=${encodeURIComponent(jwt)}`);
+    res.redirect(`${IOS_CALLBACK_SCHEME}://auth/callback?token=${encodeURIComponent(jwt)}`);
   } catch (err) {
     console.error('[Google iOS OAuth]', err);
-    res.redirect('forma://auth/callback?error=server_error');
+    res.redirect(`${IOS_CALLBACK_SCHEME}://auth/callback?error=server_error`);
   }
 });
 
