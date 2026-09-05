@@ -328,6 +328,95 @@ router.get('/auth/google/callback', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Google OAuth — iOS (ASWebAuthenticationSession flow)
+// ---------------------------------------------------------------------------
+
+// GET /api/auth/google/ios — build the Google authorize URL and return it as JSON
+// (iOS calls this to get the URL, then opens it in ASWebAuthenticationSession)
+router.get('/api/auth/google/ios', (req, res) => {
+  const baseUrl = process.env.BASE_URL || 'https://forma-web-edud.onrender.com';
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: `${baseUrl}/api/auth/google/ios-callback`,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'online',
+    prompt: 'select_account',
+  });
+  res.json({ url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` });
+});
+
+// GET /api/auth/google/ios-callback — Google redirects here; we then redirect to forma://
+router.get('/api/auth/google/ios-callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error || !code) {
+    return res.redirect('forma://auth/callback?error=cancelled');
+  }
+  try {
+    const baseUrl = process.env.BASE_URL || 'https://forma-web-edud.onrender.com';
+
+    // Exchange code for Google tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${baseUrl}/api/auth/google/ios-callback`,
+        grant_type: 'authorization_code',
+      }),
+    });
+    const tokens = await tokenRes.json();
+    if (!tokens.access_token) {
+      console.error('[Google iOS OAuth] token exchange failed', tokens);
+      return res.redirect('forma://auth/callback?error=token_failed');
+    }
+
+    // Get user profile
+    const infoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    const profile = await infoRes.json();
+    const { id: google_sub, email, name } = profile;
+    if (!google_sub || !email) {
+      return res.redirect('forma://auth/callback?error=no_email');
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    let user = null;
+
+    const byGoogle = await db.query('SELECT * FROM users WHERE google_sub=$1', [google_sub]);
+    if (byGoogle.rows[0]) {
+      user = byGoogle.rows[0];
+    } else {
+      const byEmail = await db.query('SELECT * FROM users WHERE email=$1', [normalizedEmail]);
+      if (byEmail.rows[0]) {
+        user = byEmail.rows[0];
+        await db.query('UPDATE users SET google_sub=$1 WHERE id=$2', [google_sub, user.id]);
+      }
+    }
+
+    if (!user) {
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const hash = await bcrypt.hash(randomPassword, 12);
+      const { rows } = await db.query(
+        'INSERT INTO users (name, email, password, role, google_sub) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [(name || 'Google User').trim(), normalizedEmail, hash, 'homeowner', google_sub]
+      );
+      user = rows[0];
+    }
+
+    const jwt = signToken(user);
+    // Redirect back to the iOS app with the JWT; ASWebAuthenticationSession intercepts this
+    res.redirect(`forma://auth/callback?token=${encodeURIComponent(jwt)}`);
+  } catch (err) {
+    console.error('[Google iOS OAuth]', err);
+    res.redirect('forma://auth/callback?error=server_error');
+  }
+});
+
 // POST /api/auth/apple
 router.post('/api/auth/apple', async (req, res) => {
   const { appleToken, name: bodyName, email: bodyEmail } = req.body;
