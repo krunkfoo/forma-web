@@ -175,13 +175,22 @@
     (plan.boundary || []).forEach(function (p) {
       pts.push([p.x, p.y != null ? p.y : (p.z || 0)]);
     });
-    (plan.wallLines || []).forEach(function (seg) {
-      (seg || []).forEach(function (p) {
-        pts.push([p.x, p.y != null ? p.y : (p.z || 0)]);
-      });
+    var wallSegs = plan.wall_lines || plan.wallLines || [];
+    wallSegs.forEach(function (seg) {
+      if (!seg) return;
+      // {start:{x,y}, end:{x,y}} format from iOS
+      if (seg.start && seg.end) {
+        pts.push([seg.start.x, seg.start.y != null ? seg.start.y : (seg.start.z || 0)]);
+        pts.push([seg.end.x,   seg.end.y   != null ? seg.end.y   : (seg.end.z   || 0)]);
+      } else if (Array.isArray(seg)) {
+        seg.forEach(function (p) {
+          pts.push([p.x, p.y != null ? p.y : (p.z || 0)]);
+        });
+      }
     });
     (plan.features || []).forEach(function (f) {
-      if (f.x != null) pts.push([f.x, f.y != null ? f.y : (f.z || 0)]);
+      var pos = f.position || f;
+      if (pos.x != null) pts.push([pos.x, pos.y != null ? pos.y : (pos.z || 0)]);
     });
     return pts;
   }
@@ -213,21 +222,33 @@
     ctx.strokeStyle = C.wallLine;
     ctx.lineWidth   = 2;
     ctx.setLineDash([]);
-    (plan.wallLines || []).forEach(function (seg) {
-      if (!seg || seg.length < 2) return;
-      ctx.beginPath();
-      seg.forEach(function (p, i) {
-        var cp = toCanvas(p.x, p.y != null ? p.y : (p.z || 0));
-        if (i === 0) ctx.moveTo(cp[0], cp[1]);
-        else         ctx.lineTo(cp[0], cp[1]);
-      });
-      ctx.stroke();
+    var wallSegs = plan.wall_lines || plan.wallLines || [];
+    wallSegs.forEach(function (seg) {
+      if (!seg) return;
+      // {start:{x,y}, end:{x,y}} format from iOS
+      if (seg.start && seg.end) {
+        var p1 = toCanvas(seg.start.x, seg.start.y != null ? seg.start.y : (seg.start.z || 0));
+        var p2 = toCanvas(seg.end.x,   seg.end.y   != null ? seg.end.y   : (seg.end.z   || 0));
+        ctx.beginPath();
+        ctx.moveTo(p1[0], p1[1]);
+        ctx.lineTo(p2[0], p2[1]);
+        ctx.stroke();
+      } else if (Array.isArray(seg) && seg.length >= 2) {
+        ctx.beginPath();
+        seg.forEach(function (p, i) {
+          var cp = toCanvas(p.x, p.y != null ? p.y : (p.z || 0));
+          if (i === 0) ctx.moveTo(cp[0], cp[1]);
+          else         ctx.lineTo(cp[0], cp[1]);
+        });
+        ctx.stroke();
+      }
     });
 
     /* Features */
     (plan.features || []).forEach(function (f) {
-      var fx   = f.x   != null ? f.x : 0;
-      var fy   = f.y   != null ? f.y : (f.z != null ? f.z : 0);
+      var pos  = f.position || f;
+      var fx   = pos.x != null ? pos.x : 0;
+      var fy   = pos.y != null ? pos.y : (pos.z != null ? pos.z : 0);
       var cp   = toCanvas(fx, fy);
       var type = (f.type || f.label || '').toLowerCase();
       var r    = Math.max(6, T.scale * 0.35);

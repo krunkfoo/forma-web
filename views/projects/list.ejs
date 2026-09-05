@@ -1,0 +1,32 @@
+<%- include('../layout', { title: 'Projects — Forma', body: `
+<div class="dash-page">
+  <div class="dash-header">
+    <h1 class="dash-title">Projects</h1>
+    <a href="/projects/new" class="btn-primary">+ New project</a>
+  </div>
+  ${projects && projects.length > 0 ? `
+  <div class="project-grid">
+    ${projects.map(p => `
+      <a href="/projects/${p.id}" class="project-card">
+        <div class="project-card-thumb">
+          ${p.thumbnail_url
+            ? `<img src="${p.thumbnail_url}" alt="${p.name}" />`
+            : `<div class="project-card-thumb-empty"></div>`}
+        </div>
+        <div class="project-card-body">
+          <div class="project-card-tag">${p.space_type || 'interior'}</div>
+          <h3>${p.name}</h3>
+          ${p.address ? `<p class="project-card-addr">${p.address}</p>` : ''}
+          ${p.area_m2 ? `<p class="project-card-area">${Math.round(p.area_m2)} m²</p>` : ''}
+        </div>
+      </a>
+    `).join('')}
+  </div>
+  ` : `
+  <div class="empty-state">
+    <p>No projects yet.</p>
+    <a href="/projects/new" class="btn-primary">Create project</a>
+  </div>
+  `}
+</div>
+` }) %>
