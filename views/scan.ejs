@@ -40,6 +40,28 @@
   </div>
 </div>
 
+<div class="ai-assistant" id="aiAssistant">
+  <div class="ai-header" onclick="toggleAI()">
+    <span>✦ Design Assistant</span>
+    <span class="ai-toggle-icon" id="aiToggleIcon">▲</span>
+  </div>
+  <div class="ai-body" id="aiBody">
+    <div class="ai-messages" id="aiMessages">
+      <div class="ai-msg ai-msg-bot">Hi! I can see your scan data. Ask me anything — furniture arrangement, plant suggestions, design ideas…</div>
+    </div>
+    <div class="ai-input-row">
+      <input type="text" id="aiInput" class="ai-input" placeholder="Ask a design question…" onkeydown="if(event.key==='Enter')sendAI()">
+      <button class="btn-primary ai-send-btn" onclick="sendAI()">Send</button>
+    </div>
+    <div class="ai-suggestions">
+      <button class="ai-chip" onclick="askAI('How should I rearrange this furniture for better flow?')">Better flow</button>
+      <button class="ai-chip" onclick="askAI('What color scheme would work best in this space?')">Color ideas</button>
+      <button class="ai-chip" onclick="askAI('What plants would work well in this outdoor space?')">Plant ideas</button>
+      <button class="ai-chip" onclick="askAI('How can I make this space feel larger?')">Feel larger</button>
+    </div>
+  </div>
+</div>
+
 <script>
   window.SCAN_DATA = ${JSON.stringify({
     id:            scan.id,
@@ -67,6 +89,44 @@
     document.getElementById('editorActions').style.display = 'none';
     document.getElementById('planLegend').style.display = '';
   });
+
+  var aiOpen = true;
+  function toggleAI() {
+    aiOpen = !aiOpen;
+    document.getElementById('aiBody').style.display = aiOpen ? 'flex' : 'none';
+    document.getElementById('aiToggleIcon').textContent = aiOpen ? '▲' : '▼';
+  }
+  function askAI(text) {
+    document.getElementById('aiInput').value = text;
+    sendAI();
+  }
+  function sendAI() {
+    var input = document.getElementById('aiInput');
+    var msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    appendMsg(msg, 'user');
+    var thinking = appendMsg('Thinking…', 'bot');
+    fetch('/api/scans/' + window.SCAN_ID + '/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ message: msg })
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      thinking.textContent = d.reply || d.error || 'No response';
+    }).catch(function() {
+      thinking.textContent = 'Connection error. Try again.';
+    });
+  }
+  function appendMsg(text, role) {
+    var msgs = document.getElementById('aiMessages');
+    var div = document.createElement('div');
+    div.className = 'ai-msg ai-msg-' + (role === 'user' ? 'user' : 'bot');
+    div.textContent = text;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return div;
+  }
 </script>
 <script src="/js/plan-viewer.js"></script>
 <script src="/js/plan-editor.js"></script>
